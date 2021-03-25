@@ -1,0 +1,61 @@
+species <- "hg38"  #**********������*********
+setwd("C:/Users/danglab/Desktop/hg38/")
+library(pheatmap)
+library(stringr)
+library(splitstackshape)
+
+#***************************����ԭʼ�ļ�********************************
+
+system(paste0("python _1.py ",species,"/CDS_DNA.fa ",species,"/CDS_pep.fa ",species,"/",species,"_all_same_codon"))
+system(paste0("python _2.py ",species,"/",species,"_all_same_codon ",species,"/",species,"_all_same_codon_cacu"))
+
+
+#***************************�γɱ���************************************
+
+codon_lis <-read.table(paste0(species,"/",species,"_all_same_codon_cacu"))
+codon_lis <- codon_lis[order(codon_lis[,1],codon_lis[,2]),]
+codon_lis <- codon_lis[,-1]
+t<-codon_lis[1:61,]
+codon_lis <- codon_lis[,-1]
+i<-62
+while (i<2867) {
+  tem<-codon_lis[i:(i+60)]
+  t<-cbind(t,tem)
+  i<-i+61
+}
+colnames(t) <- c("AA_codon",seq(2,48))
+rownames(t) <- t[,1]
+t <- t[,-1]
+t <- as.matrix(t)
+pheatmap(t,cluster_cols = F,cluster_rows = F)
+write.table(t,paste0(species,"/",species,"_codon"),quote=F,sep = "\t")
+
+#***********************����ͳ��***********************************
+
+a <-read.csv(paste0(species,"/",species,"_codon") ,sep = "\t",header = F)
+a <- a[-1,]
+a <- cSplit(a ,"V1","_")
+v = aggregate(.~V1_1, a[,1:48], sum)
+v$sum = as.vector (apply(v[,2:48], 1, sum) )
+v$sum18 = as.vector(apply(v[,19:48],1,sum))
+m = as.matrix(v[,2:50])
+rownames(m) = v$V1_1
+x = apply(v[,2:48], 1, sum)
+m1 = m/x*10000000
+m1 = log(m1,10)
+m1[m1==-Inf]<-0
+write.table(m1,paste0(species,"/",species,".txt"),quote = F,sep = "\t")
+
+#**********************ת�����������д��ȫ��?*********************
+
+system(paste0("python _3.py ",species,"/",species,".txt ",species,"/",species,".txt1"))
+
+#*****************************��ͼ********************************
+
+b <- read.table(paste0(species,"/",species,".txt1"),sep = "\t")
+rownames(b) <- b$V1
+b <- b[,-20:-50]  #************�ɵ���****************
+b <- b[,-1:-2]
+colnames(b) <- c(seq(2,18),">18")
+b <- as.matrix(b)
+pheatmap(b,cluster_cols = F,cluster_rows = F,main= species,fontsize=20)
